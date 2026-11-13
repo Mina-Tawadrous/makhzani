@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مخزني - إدارة المخزون</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2349d6">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f5f9;--card:#fff;--ink:#14202c;--mut:#5a6b7c;--pri:#2349d6;--on:#fff;--line:#d9e0e8;--warn:#b93c0a;--warnbg:#fdeee6;--ok:#157a3c;--okbg:#e5f5ea;--err:#b91c1c;--errbg:#fde8e8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1720;--card:#18232f;--ink:#e8eef4;--mut:#93a4b5;--pri:#7c9bff;--on:#0f1720;--line:#2b3a4a;--warn:#ffa26b;--warnbg:#3a2417;--ok:#6fd194;--okbg:#14301f;--err:#ff8f8f;--errbg:#3a1a1a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1720;--card:#18232f;--ink:#e8eef4;--mut:#93a4b5;--pri:#7c9bff;--on:#0f1720;--line:#2b3a4a;--warn:#ffa26b;--warnbg:#3a2417;--ok:#6fd194;--okbg:#14301f;--err:#ff8f8f;--errbg:#3a1a1a;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Cairo,Tahoma,system-ui,sans-serif;line-height:1.6;padding-bottom:84px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;max-width:760px;margin:0 auto}
+h1{font-size:22px;font-weight:800;margin:0}
+h2{font-size:17px;margin:20px 0 8px}
+main{max-width:760px;margin:0 auto;padding:0 16px 16px}
+select,input,button{font:inherit;color:inherit}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+header select{width:auto}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
+.btn{border:0;background:var(--pri);color:var(--on);padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+.btn.sec{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+.btn.sm{padding:5px 12px;font-size:14px}
+.btn.full{width:100%;padding:13px;font-size:17px;margin-top:10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+.row .g{flex:1;min-width:0}
+.row b{display:block;overflow-wrap:anywhere}
+.mut{color:var(--mut);font-size:14px}
+.tag{display:inline-block;padding:1px 9px;border-radius:20px;font-size:13px;font-weight:600}
+.t-warn{background:var(--warnbg);color:var(--warn)}.t-err{background:var(--errbg);color:var(--err)}.t-ok{background:var(--okbg);color:var(--ok)}
+.tot{display:flex;justify-content:space-between;font-size:20px;font-weight:800;padding:12px 4px}
+.empty{padding:22px 12px;text-align:center;color:var(--mut);border:1px dashed var(--line);border-radius:8px}
+.stat{display:flex;gap:10px}.stat>div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}.stat b{font-size:24px;display:block}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;padding:12px 4px;font-weight:600;color:var(--mut);cursor:pointer;position:relative}
+nav button.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+nav i{position:absolute;top:6px;margin-inline-start:4px;background:var(--err);color:#fff;font-style:normal;font-size:12px;border-radius:10px;padding:0 6px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,92vw);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts{display:flex;gap:8px;margin-top:16px}.acts .btn{flex:1}
+#toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:24px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+#rc{border:1px dashed var(--line);border-radius:8px;padding:12px;margin:10px 0}#rc h2{margin:0 0 4px;text-align:center}#rc .ln{display:flex;justify-content:space-between;gap:8px;padding:3px 0}#rc .tt{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;font-weight:800}
+@media print{body>*:not(#dlg){display:none!important}#dlg{position:static;border:0;width:80mm;padding:0;color:#000;background:#fff}#dlg::backdrop{display:none}#dlg .noprint{display:none!important}#rc{border:0;color:#000}}
+body.cashier .own{display:none}.sub{padding:10px 12px;border-radius:8px;margin:0 0 10px}
+</style>
+</head>
+<body>
+<header><h1>📦 مخزني</h1>
+<button class="btn sec sm" onclick="fSet()">⚙ الإعدادات</button></header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var S=null,tab='sell',cart=[],authMode='login';
+var bluetoothDevice=null,printerCharacteristic=null;
+
+S={mode:'pharmacy',products:[],sales:[],shop:'',cust:[],expenses:[]};
+function save(){try{localStorage.setItem('mode',S.mode);localStorage.setItem('sname',S.shop||'')}catch(e){}}
+function $(s){return document.querySelector(s)}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function ph(){return S.mode==='pharmacy'}
+function P(id){return S.products.find(function(p){return p.id===id})}
+function toast(m){var t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className=''},2200)}
+function fmt(p,q){return p.spb>1?Math.floor(q/p.spb)+' علبة'+(q%p.spb?' + '+(q%p.spb)+' شريط':''):q+' قطعة'}
+function money(n){return (Math.round(n*100)/100)+' ج.م'}
+function days(p){return p.exp?Math.ceil((new Date(p.exp)-Date.now())/864e5):null}
+function alerts(){var a=[];S.products.forEach(function(p){
+ var d=days(p);
+ if(p.qty<=0)a.push({p:p,k:'err',t:'خلص من المخزون'});
+ else if(p.qty<=p.min)a.push({p:p,k:'warn',t:'وصل للحد الأدنى (باقي '+fmt(p,p.qty)+')'});
+ if(d!==null&&d<0)a.push({p:p,k:'err',t:'منتهي الصلاحية'});
+ else if(d!==null&&d<=90)a.push({p:p,k:'warn',t:'ينتهي بعد '+d+' يوم'});
+});return a}
+function renderNav(){var n=alerts().length;
+ var T=[['sell','بيع'],['stock','المخزون'],['alerts','تنبيهات'],['cust','العملاء'],['rep','تقارير']];
+ $('#nav').innerHTML=T.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='alerts'&&n?'<i>'+n+'</i>':'')+'</button>'}).join('')}
+function go(t){tab=t;render()}
+function render(){renderNav();({sell:vSell,stock:vStock,alerts:vAlerts,rep:vRep,cust:vCust})[tab]();var si=subInfo();if(si.d<=3)$('#main').insertAdjacentHTML('afterbegin','<div class="sub '+(si.d<0?'t-err':'t-warn')+'">'+(si.d<0?'الاشتراك منتهي. تقدر تشوف بياناتك بس مش تبيع أو تعدّل.':'الاشتراك ينتهي بعد '+Math.max(si.d,0)+' يوم.')+'</div>')}
+
+/* ---------- السحابة والتحقق الموحد ---------- */
+var DB=supabase.createClient('https://tfsghjsczwvqadjklkkh.supabase.co','sb_publishable_wuYZOw3xaPr5kSkEtVpWdQ_tVy0-077'),SID=null,ROLE='cashier',SHOP=null;
+function msg(e){var m=e.message||'';
+ if(/subscription expired/.test(m))return 'الاشتراك منتهي. فعّل الاشتراك عشان تكمل.';
+ if(/insufficient stock/.test(m))return 'الكمية المتاحة مش كفاية: '+m.split(': ')[1];
+ if(/user not found/.test(m))return 'الإيميل ده مسجلش حساب لسه. اطلب منه يسجل الأول.';
+ if(/row-level security/.test(m))return 'مش مسموح لك بالعملية دي، أو الاشتراك منتهي.';
+ if(/fetch|network/i.test(m))return 'مفيش اتصال بالنت.';
+ if(/customer required/.test(m))return 'اختار عميل لو مش هيدفع المبلغ كامل.';
+ if(/invalid return/.test(m))return 'كمية المرتجع أكبر من المتاح للإرجاع.';
+ if(/Invalid login/.test(m))return 'الإيميل أو كلمة السر غلط.';
+ if(/already registered/.test(m))return 'الإيميل ده مسجل قبل كده. جرّب تسجيل الدخول.';
+ if(/Password should/.test(m))return 'كلمة السر لازم تكون 6 حروف على الأقل.';
+ return m}
+function subInfo(){if(!SHOP)return{e:'',d:99};var e=[SHOP.trial_ends,SHOP.paid_until].filter(Boolean).sort().pop();return{e:e,d:Math.ceil((new Date(e)-Date.now())/864e5)}}
+
+function vNew(){$('#nav').innerHTML='';$('#main').innerHTML='<h2>اسم المحل أو الصيدلية</h2><input id="sn0" placeholder="مثلاً: صيدلية الشفاء"><label>نوع النشاط (بتختاره مرة واحدة ومش بيتغيّر بعد كده)</label><select id="ty"><option value="pharmacy">صيدلية</option><option value="general">محل عام</option></select><div class="acts"><button class="btn" onclick="mkShop()">إنشاء وبدء التجربة المجانية</button></div><h2>أنا كاشير</h2><p class="mut">لو صاحب المحل ضافك بإيميلك، اضغط تحديث.</p><div class="acts"><button class="btn sec" onclick="boot()">تحديث</button><button class="btn sec" onclick="DB.auth.signOut().then(function(){location.reload()})">تسجيل خروج</button></div>'}
+async function mkShop(){var n=$('#sn0').value.trim();if(!n)return toast('اكتب اسم المحل');var r=await DB.rpc('create_shop',{p_name:n,p_type:$('#ty').value});if(r.error)return toast(msg(r.error));boot()}
+/* الواجهة الموحدة الرئيسية */
+function vAuth(){
+ $('#nav').innerHTML='';document.body.className='';
+ $('#main').innerHTML='<div style="max-width:440px;margin:20px auto;background:var(--card);padding:20px;border:1px solid var(--line);border-radius:12px;">'
+  +'<div style="display:flex;gap:8px;margin-bottom:16px;">'
+    +'<button class="btn '+(authMode==='login'?'':'sec')+'" style="flex:1" onclick="authMode=\'login\';vAuth()">تسجيل الدخول</button>'
+    +'<button class="btn '+(authMode==='signup'?'':'sec')+'" style="flex:1" onclick="authMode=\'signup\';vAuth()">حساب ومحل جديد</button>'
+  +'</div>'
+  +'<h2 style="margin-top:0;font-size:19px;">'+(authMode==='login'?'تسجيل الدخول إلى حسابك':'إنشاء حساب ومحل جديد')+'</h2>'
+  +'<label>الإيميل</label><input id="em" type="email" autocomplete="username" placeholder="name@example.com">'
+  +'<label>كلمة السر</label><input id="pw" type="password" autocomplete="current-password" placeholder="••••••••">'
+  +(authMode==='signup'?'<div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;"><label>اسم المحل أو الصيدلية</label><input id="sn0" placeholder="مثلاً: صيدلية الشفاء"><label>نوع النشاط (بتختاره مرة واحدة ومش بيتغيّر بعد كده)</label><select id="ty"><option value="pharmacy">صيدلية</option><option value="general">محل عام</option></select></div>':'')
+  +'<div class="acts" style="margin-top:20px;"><button class="btn full" onclick="submitAuth()">'+(authMode==='login'?'دخول':'إنشاء وبدء التجربة المجانية')+'</button></div>'
+  +(authMode==='login'?'<div style="margin-top:16px;text-align:center;border-top:1px solid var(--line);padding-top:12px;"><p class="mut" style="margin:0 0 6px;font-size:13px;">أنا كاشير ومضاف مسبقاً؟</p><button class="btn sec sm" onclick="boot()">تحديث بيانات الدخول</button></div>':'')
+  +'</div>';
+}
+
+async function submitAuth(){
+ var email=$('#em').value.trim(),password=$('#pw').value;
+ if(!email||!password)return toast('من فضلك اكتب الإيميل وكلمة السر');
+ if(authMode==='login'){
+  var r=await DB.auth.signInWithPassword({email:email,password:password});
+  if(r.error)return toast(msg(r.error));
+  boot();
+ }else{
+  var shopName=$('#sn0').value.trim(),shopType=$('#ty').value;
+  if(!shopName)return toast('اكتب اسم المحل أو الصيدلية');
+  var r=await DB.auth.signUp({email:email,password:password});
+  if(r.error)return toast(msg(r.error));
+  if(r.data.session){
+   var r2=await DB.rpc('create_shop',{p_name:shopName,p_type:shopType});
+   if(r2.error)return toast(msg(r2.error));
+   boot();
+  }else{
+   toast('اتبعتلك إيميل تأكيد. افتحه وبعدين سجل دخول.');
+  }
+ }
+}
+
+async function boot(){var u=await DB.auth.getSession();if(!u.data.session)return vAuth();
+ var m=await DB.from('members').select('shop_id,role,shops(name,type,trial_ends,paid_until)').limit(1);
+ if(m.error)return toast(msg(m.error));
+ if(!m.data.length)return vNew();
+ SID=m.data[0].shop_id;ROLE=m.data[0].role;SHOP=m.data[0].shops;
+ try{S.mode=SHOP.type||'pharmacy';S.shop=localStorage.getItem('sname')||SHOP.name}catch(e){S.shop=SHOP.name}
+ document.body.className=ROLE==='owner'?'':'cashier';await load();render();syncOfflineSales()}
+async function load(){
+ var a=await DB.from('products').select('*').eq('shop_id',SID).order('created_at'),
+     b=await DB.from('sales').select('id,number,total,paid,refunded,customer_id,created_at,sale_items(id,name,qty,unit,returned,line_total)').eq('shop_id',SID).order('created_at',{ascending:false}).limit(500),
+     e=await DB.from('expenses').select('*').eq('shop_id',SID).order('created_at',{ascending:false});
+ if(a.error||b.error)return toast(msg(a.error||b.error));
+ S.products=a.data.map(function(r,i){return{id:i+1,uid:r.id,name:r.name,code:r.code||'',price:+r.price,qty:r.qty,min:r.min_qty,spb:r.units_per_box,exp:r.expiry||'',sold:r.sold,last:r.last_sold_at?Date.parse(r.last_sold_at):0,c:Date.parse(r.created_at)}});
+ S.sales=b.data.reverse().map(function(r){return{id:r.id,no:r.number,t:Date.parse(r.created_at),tot:+r.total,paid:+r.paid,refunded:+r.refunded,cid:r.customer_id,items:r.sale_items.map(function(i){return{iid:i.id,n:i.name,q:i.qty,u:i.unit,rt:i.returned,v:+i.line_total}})}});
+ S.expenses=e.data||[];
+ var c=await DB.from('customers').select('*').eq('shop_id',SID).order('name');S.cust=c.data||[]}
+function fSet(){var si=subInfo(),d=$('#dlg');
+ d.innerHTML='<h2 style="margin-top:0">'+esc(SHOP.name)+'</h2><p class="mut">الاشتراك لحد '+si.e+' ('+(SHOP.paid_until?'مدفوع':'تجربة مجانية')+')</p>'
+ +(ROLE==='owner'?'<label>إضافة كاشير (لازم يكون سجّل حساب بنفس الإيميل)</label><input id="ce" type="email"><div class="acts"><button class="btn" onclick="addCash()">إضافة</button></div>':'')
+ +(ROLE==='owner'?'<div class="acts"><button class="btn sec" onclick="csv(0)">تصدير المخزون</button><button class="btn sec" onclick="csv(1)">تصدير المبيعات</button></div>':'')
+ +'<div class="acts"><button class="btn sec" onclick="DB.auth.signOut().then(function(){location.reload()})">تسجيل خروج</button><button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button></div>';d.showModal()}
+async function addCash(){var r=await DB.rpc('add_cashier',{p_shop:SID,p_email:$('#ce').value});toast(r.error?msg(r.error):'تمت إضافة الكاشير');if(!r.error)$('#dlg').close()}
+
+/* ---------- تصدير وكاميرا ---------- */
+function csv(k){var R=k?[['رقم','التاريخ','الإجمالي','الأصناف']].concat(S.sales.map(function(s){return[s.no,new Date(s.t).toLocaleString('ar-EG'),s.tot,s.items.map(function(i){return i.n+'×'+i.q}).join(' | ')]})):[['الاسم','الباركود','السعر','الكمية (أصغر وحدة)','الحد الأدنى','وحدات/علبة','الصلاحية']].concat(S.products.map(function(p){return[p.name,p.code,p.price,p.qty,p.min,p.spb,p.exp]}));
+ var txt='\ufeff'+R.map(function(r){return r.map(function(v){v=String(v);if(/^[=+\-@]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+ var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));a.download=(k?'sales':'stock')+'.csv';a.click()}
+async function scan(){var d=$('#dlg');d.innerHTML='<video id="vd" playsinline muted style="width:100%;border-radius:8px"></video><div class="acts"><button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button></div>';d.showModal();
+ var st,bd=new BarcodeDetector();
+ try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})}catch(e){d.close();return toast('مفيش صلاحية للكاميرا')}
+ var v=$('#vd');v.srcObject=st;await v.play();window.cam=st;
+ (async function loop(){if(window.cam!==st)return;try{var r=await bd.detect(v);if(r.length){var c=r[0].rawValue,p=S.products.find(function(x){return x.code===c});d.close();if(p){addCart(p.id);toast('تمت إضافة '+p.name)}else toast('الباركود ده مش مسجل: '+c);return}}catch(e){}setTimeout(loop,300)})()}
+$('#dlg').addEventListener('close',function(){if(window.cam){window.cam.getTracks().forEach(function(x){x.stop()});window.cam=null}});
+
+/* ---------- عملاء وآجل ومرتجعات ومصروفات ---------- */
+var CU='',PD='';
+function custBlock(){return '<label>العميل (اختياري، للبيع الآجل)</label><div style="display:flex;gap:8px"><select onchange="CU=this.value"><option value="">بدون عميل</option>'+S.cust.map(function(c){return '<option value="'+c.id+'"'+(c.id===CU?' selected':'')+'>'+esc(c.name)+(c.balance>0?' (عليه '+money(c.balance)+')':'')+'</option>'}).join('')+'</select><button class="btn sec sm" onclick="fCust()">+ عميل</button></div><label>المدفوع الآن (سيبه فاضي لو دفع كامل)</label><input type="number" min="0" step="0.01" value="'+PD+'" oninput="PD=this.value">'}
+function vCust(){var tot=S.cust.reduce(function(a,c){return a+ +c.balance},0);
+ $('#main').innerHTML='<div class="stat"><div><span class="mut">إجمالي الديون عند العملاء</span><b>'+money(tot)+'</b></div></div><div class="acts"><button class="btn" onclick="fCust()">+ عميل جديد</button></div><div style="margin-top:10px">'+(S.cust.length?S.cust.map(function(c){return '<div class="row"><div class="g"><b>'+esc(c.name)+'</b><span class="mut">'+esc(c.phone||'')+'</span><br><span class="tag '+(c.balance>0?'t-warn':'t-ok')+'">'+(c.balance>0?'عليه '+money(c.balance):'مفيش ديون')+'</span></div>'+(c.balance>0?'<button class="btn sm" onclick="fPay(\''+c.id+'\')">تحصيل</button><button class="btn sec sm" onclick="remind(\''+c.id+'\')">تذكير</button>':'')+'</div>'}).join(''):'<div class="empty">مفيش عملاء. ضيف عميل عشان تبيع آجل.</div>')+'</div>'}
+function fCust(){var d=$('#dlg');d.innerHTML='<form onsubmit="return addCu(event)"><h2 style="margin-top:0">عميل جديد</h2><label>الاسم</label><input id="cn" required><label>الموبايل (اختياري)</label><input id="cp" type="tel" inputmode="tel"><div class="acts"><button class="btn" type="submit">حفظ</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';d.showModal()}
+async function addCu(e){e.preventDefault();var r=await DB.from('customers').insert({shop_id:SID,name:$('#cn').value.trim(),phone:$('#cp').value.trim()||null}).select().single();
+ if(r.error){toast(msg(r.error));return false}
+ if(tab==='sell')CU=r.data.id;$('#dlg').close();await load();render();toast('تمت إضافة العميل');return false}
+function fPay(id){var c=S.cust.find(function(x){return x.id===id}),d=$('#dlg');d.innerHTML='<form onsubmit="return doPay(event,\''+id+'\')"><h2 style="margin-top:0">تحصيل من '+esc(c.name)+'</h2><p class="mut">عليه '+money(c.balance)+'</p><label>المبلغ</label><input id="pa" type="number" step="0.01" min="0.01" max="'+c.balance+'" value="'+c.balance+'" required><div class="acts"><button class="btn" type="submit">تأكيد التحصيل</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';d.showModal()}
+async function doPay(e,id){e.preventDefault();var r=await DB.rpc('record_payment',{p_shop:SID,p_customer:id,p_amount:+$('#pa').value});if(r.error){toast(msg(r.error));return false}$('#dlg').close();toast('تم التحصيل');await load();render();return false}
+function remind(id){var c=S.cust.find(function(x){return x.id===id}),n=(c.phone||'').replace(/\D/g,'');if(n.charAt(0)==='0')n='20'+n.slice(1);
+ var tx='أهلاً '+c.name+'، المتبقي عليك '+money(c.balance)+' عند '+(S.shop||'المحل')+'. شكراً لتعاملك معنا.',w=null;try{w=window.open('https://wa.me/'+n+'?text='+encodeURIComponent(tx),'_blank')}catch(e){}
+ if(!w){try{navigator.clipboard.writeText(tx);toast('تم نسخ نص التذكير')}catch(e){}}}
+function fRet(t){var s=saleOf(t),d=$('#dlg');
+ d.innerHTML='<h2 style="margin-top:0">مرتجع من فاتورة '+s.no+'</h2>'+s.items.map(function(i){var m=i.q-i.rt;return '<div class="row"><div class="g"><b>'+esc(i.n)+'</b><span class="mut">اتباع '+i.q+(i.u==='strip'?' شريط':'')+' · اترجع '+i.rt+'</span></div><input type="number" min="0" max="'+m+'" value="0" data-i="'+i.iid+'" class="rq" style="width:70px"'+(m?'':' disabled')+'></div>'}).join('')+'<div class="acts"><button class="btn" onclick="doRet(\''+s.id+'\')">تأكيد المرتجع</button><button class="btn sec" onclick="$(\'#dlg\').close()">إلغاء</button></div>';d.showModal()}
+async function doRet(sid){var L=[].slice.call(document.querySelectorAll('.rq')).map(function(x){return{id:x.dataset.i,qty:+x.value||0}}).filter(function(l){return l.qty>0});
+ if(!L.length)return toast('حدد كمية المرتجع');
+ var r=await DB.rpc('refund_sale',{p_shop:SID,p_sale:sid,p_lines:L});
+ if(r.error)return toast(msg(r.error));
+ $('#dlg').close();toast(r.data>0?'تم المرتجع. المطلوب رده كاش: '+money(r.data):'تم المرتجع وخُصم من ديون العميل');await load();render()}
+
+function fExpense(){
+ var d=$('#dlg');
+ d.innerHTML='<form onsubmit="return addExp(event)"><h2 style="margin-top:0">تسجيل مصروف جديد</h2><label>البيان / سبب المصروف</label><input id="ex_title" placeholder="مثلاً: فواتير كهرباء، نثريات..." required><label>المبلغ (ج.م)</label><input id="ex_amt" type="number" step="0.01" min="0.01" required><div class="acts"><button class="btn" type="submit">حفظ المصروف</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';
+ d.showModal();
+}
+async function addExp(e){
+ e.preventDefault();var title=$('#ex_title').value.trim(),amt=+$('#ex_amt').value;
+ var r=await DB.from('expenses').insert({shop_id:SID,title:title,amount:amt});
+ if(r.error){toast(msg(r.error));return false}
+ $('#dlg').close();toast('تم تسجيل المصروف بنجاح');await load();render();return false;
+}
+
+/* ---------- بيع ووضع Offline-First ---------- */
+function vSell(){
+ $('#main').innerHTML='<div style="display:flex;gap:8px"><input id="q" placeholder="ابحث بالاسم أو امسح الباركود" autocomplete="off">'+(window.BarcodeDetector?'<button class="btn sec" aria-label="مسح بالكاميرا" onclick="scan()">📷</button>':'')+'</div><div id="res" style="margin-top:8px"></div><h2>الفاتورة</h2><div id="cart"></div>';
+ $('#q').oninput=sRes;
+ $('#q').onkeydown=function(e){if(e.key==='Enter'){var v=this.value.trim(),p=S.products.find(function(x){return x.code&&x.code===v});if(p){addCart(p.id);this.value='';sRes()}}};
+ sRes();sCart()}
+function sRes(){var v=$('#q').value.trim().toLowerCase(),r=$('#res');
+ if(!v){r.innerHTML=S.products.length?'':'<div class="empty">المخزون فاضي. ضيف أصنافك من تبويب المخزون.</div>';return}
+ var L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1||(p.code||'').indexOf(v)>-1}).slice(0,6);
+ r.innerHTML=L.length?L.map(function(p){return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(p.price)+' · متاح: '+fmt(p,p.qty)+'</span></div><button class="btn sm" onclick="addCart('+p.id+')">إضافة</button></div>'}).join(''):'<div class="empty">مفيش صنف بالاسم ده.</div>'}
+function units(c){var p=P(c.id);return c.q*(c.u==='strip'?1:(p.spb||1))}
+function price(c){var p=P(c.id);return c.u==='strip'?p.price/p.spb*c.q:p.price*c.q}
+function addCart(id){var p=P(id),c=cart.find(function(x){return x.id===id});
+ if(c){c.q++}else cart.push({id:id,q:1,u:'box'});
+ var c2=cart.find(function(x){return x.id===id});
+ if(units(c2)>p.qty){c2.q--;if(!c2.q)cart=cart.filter(function(x){return x!==c2});toast('الكمية المتاحة مش كفاية');}
+ sCart()}
+function chQ(i,d){var c=cart[i];c.q+=d;if(c.q<1)cart.splice(i,1);else if(units(c)>P(c.id).qty){c.q-=d;toast('الكمية المتاحة مش كفاية')}sCart()}
+function chU(i){var c=cart[i];c.u=c.u==='box'?'strip':'box';c.q=1;sCart()}
+function sCart(){var el=$('#cart');if(!el)return;
+ if(!cart.length){el.innerHTML='<div class="empty">الفاتورة فاضية. دوّر على صنف وضيفه.</div>';return}
+ var tot=0;
+ el.innerHTML=cart.map(function(c,i){var p=P(c.id);tot+=price(c);
+  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(price(c))+'</span>'+(p.spb>1?' <button class="btn sec sm" onclick="chU('+i+')">'+(c.u==='strip'?'شريط':'علبة')+'</button>':'')+'</div><button class="btn sec sm" aria-label="أقل" onclick="chQ('+i+',-1)">−</button><b>'+c.q+'</b><button class="btn sec sm" aria-label="أكتر" onclick="chQ('+i+',1)">+</button></div>'}).join('')
+  +'<div class="tot"><span>الإجمالي</span><span>'+money(tot)+'</span></div>'+custBlock()+'<button class="btn full" onclick="doSell()">تأكيد البيع</button>'}
+
+async function doSell(){
+ if(!cart.length)return;var b=$('#cart .full');if(b)b.disabled=true;
+ var saleData={
+  p_shop:SID,
+  p_items:cart.map(function(c){return{product_id:P(c.id).uid,qty:c.q,unit:c.u}}),
+  p_customer:CU||null,
+  p_paid:PD===''?null:+PD
+ };
+
+ if(!navigator.onLine){
+  var localSales=JSON.parse(localStorage.getItem('offline_sales')||'[]');
+  localSales.push(saleData);
+  localStorage.setItem('offline_sales',JSON.stringify(localSales));
+  toast('تم حفظ الفاتورة محلياً (لا يوجد إنترنت). ستتم المزامنة عند عودة الاتصال 🔄');
+  cart=[];CU='';PD='';render();if(b)b.disabled=false;return;
+ }
+
+ var r=await DB.rpc('make_sale',saleData);
+ if(r.error){toast(msg(r.error));if(b)b.disabled=false;return}
+ cart=[];CU='';PD='';await load();render();toast('تم إتمام البيع بنجاح ونشر البيانات بالسحابة');
+}
+
+async function syncOfflineSales(){
+ if(!navigator.onLine||!SID)return;
+ var localSales=JSON.parse(localStorage.getItem('offline_sales')||'[]');
+ if(localSales.length===0)return;
+ toast('جاري مزامنة الفواتير المعلقة مع السحابة...');
+ var remainingSales=[];
+ for(var i=0;i<localSales.length;i++){
+  var sale=localSales[i];
+  var r=await DB.rpc('make_sale',{p_shop:sale.p_shop,p_items:sale.p_items,p_customer:sale.p_customer,p_paid:sale.p_paid});
+  if(r.error)remainingSales.push(sale);
+ }
+ localStorage.setItem('offline_sales',JSON.stringify(remainingSales));
+ if(remainingSales.length===0){
+  toast('تمت مزامنة جميع الفواتير المعلقة بنجاح! ✅');
+  await load();render();
+ }
+}
+
+window.addEventListener('online',function(){
+ toast('عودة الاتصال بالإنترنت!');
+ syncOfflineSales();
+});
+
+/* ---------- الفاتورة وطباعة البلوتوث ---------- */
+function saleOf(t){return S.sales.find(function(s){return s.t===t})}
+function rcHtml(s){return '<h2>'+esc(S.shop||'فاتورة')+'</h2><div class="mut" style="text-align:center">فاتورة رقم '+s.no+'<br>'+new Date(s.t).toLocaleString('ar-EG')+'</div><div style="margin-top:8px">'+s.items.map(function(i){return '<div class="ln"><span>'+esc(i.n)+' × '+i.q+'</span><span>'+money(i.v)+'</span></div>'}).join('')+'</div><div class="ln tt"><span>الإجمالي</span><span>'+money(s.tot)+'</span></div>'+(s.paid<s.tot?'<div class="ln"><span>المدفوع</span><span>'+money(s.paid)+'</span></div><div class="ln"><span>المتبقي</span><span>'+money(Math.max(s.tot-s.refunded-s.paid,0))+'</span></div>':'')+(s.refunded?'<div class="ln"><span>مرتجع</span><span>'+money(s.refunded)+'</span></div>':'')+'<div class="mut" style="text-align:center;margin-top:8px">شكراً لزيارتكم</div>'}
+function rcText(s){return (S.shop?S.shop+'\n':'')+'فاتورة رقم '+s.no+'\n'+new Date(s.t).toLocaleString('ar-EG')+'\n------------\n'+s.items.map(function(i){return i.n+' × '+i.q+' = '+money(i.v)}).join('\n')+'\n------------\nالإجمالي: '+money(s.tot)+(s.paid<s.tot?'\nالمدفوع: '+money(s.paid)+'\nالمتبقي: '+money(Math.max(s.tot-s.refunded-s.paid,0)):'')+'\nشكراً لزيارتكم'}
+
+async function connectPrinter(){
+ try{
+  if(!navigator.bluetooth){toast('المتصفح ده مش بيدعم Web Bluetooth. استخدم Google Chrome.');return false;}
+  toast('جاري البحث عن طابعة البلوتوث...');
+  bluetoothDevice=await navigator.bluetooth.requestDevice({
+   acceptAllDevices:true,
+   optionalServices:['000018f0-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2']
+  });
+  const server=await bluetoothDevice.gatt.connect();
+  const services=await server.getPrimaryServices();
+  if(services.length>0){
+   const characteristics=await services[0].getCharacteristics();
+   printerCharacteristic=characteristics[0];
+   toast('تم الاتصال بالطابعة بنجاح! 🖨️');
+   return true;
+  }
+ }catch(e){
+  console.error(e);
+  toast('تعذر الاتصال بالطابعة');
+  return false;
+ }
+}
+
+async function printBT(t){
+ var s=saleOf(t);
+ if(!s)return;
+ if(!printerCharacteristic){
+  var connected=await connectPrinter();
+  if(!connected)return;
+ }
+ try{
+  var esc='\x1B\x40\x1B\x61\x01'+(S.shop||'فاتورة مبيعات')+'\n--------------------------------\n\x1B\x61\x00'
+   +'رقم الفاتورة: '+s.no+'\nتاريخ: '+new Date(s.t).toLocaleString('ar-EG')+'\n--------------------------------\n';
+  s.items.forEach(function(i){esc+=i.n+' x'+i.q+' = '+money(i.v)+'\n';});
+  esc+='--------------------------------\nالإجمالي: '+money(s.tot)+'\n';
+  if(s.paid<s.tot){
+   esc+='المدفوع: '+money(s.paid)+'\nالمتبقي: '+money(Math.max(s.tot-s.refunded-s.paid,0))+'\n';
+  }
+  esc+='\x1B\x61\x01\nشكراً لزيارتكم!\n\n\n\n\x1D\x56\x41\x03';
+  var encoder=new TextEncoder();
+  var data=encoder.encode(esc);
+  const chunkSize=512;
+  for(let i=0;i<data.length;i+=chunkSize){
+   await printerCharacteristic.writeValue(data.slice(i,i+chunkSize));
+  }
+  toast('تمت الطباعة بنجاح');
+ }catch(e){
+  console.error(e);
+  toast('حدث خطأ أثناء الطباعة، تأكد من تشغيل الطابعة');
+  printerCharacteristic=null;
+ }
+}
+
+function showReceipt(t){var s=saleOf(t),d=$('#dlg');
+ d.innerHTML='<div id="rc">'+rcHtml(s)+'</div>'
+ +'<div class="noprint">'
+  +'<label>اسم المحل (يظهر في الفاتورة)</label><input id="sn" value="'+esc(S.shop||'')+'">'
+  +'<label>موبايل الزبون للواتساب (اختياري)</label><input id="ph" type="tel" inputmode="tel" placeholder="01012345678">'
+  +'<div class="acts">'
+    +'<button class="btn" onclick="printBT('+t+')">طباعة بلوتوث 🖨️</button>'
+    +'<button class="btn sec" onclick="window.print()">طباعة عادية</button>'
+    +'<button class="btn" onclick="wa('+t+')">واتساب</button>'
+    +'<button class="btn sec" onclick="fRet('+t+')">مرتجع</button>'
+    +'<button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button>'
+  +'</div>'
+ +'</div>';
+ $('#sn').oninput=function(){S.shop=this.value;save();$('#rc').innerHTML=rcHtml(s)};
+ d.showModal()}
+
+function wa(t){var s=saleOf(t),n=$('#ph').value.replace(/\D/g,'');
+ if(n.charAt(0)==='0')n='20'+n.slice(1);
+ var w=null;try{w=window.open('https://wa.me/'+n+'?text='+encodeURIComponent(rcText(s)),'_blank')}catch(e){}
+ if(!w){try{navigator.clipboard.writeText(rcText(s));toast('تم نسخ نص الفاتورة، الصقه في واتساب')}catch(e){toast('تعذر فتح واتساب')}}}
+
+/* ---------- المخزون ---------- */
+function vStock(){
+ $('#main').innerHTML='<div class="acts" style="margin-top:0"><button class="btn own" onclick="fProd()">+ صنف جديد</button>'+''+'</div><input id="f" placeholder="فلترة بالاسم" style="margin-top:10px"><div id="list" style="margin-top:10px"></div>';
+ $('#f').oninput=sList;sList()}
+function sList(){var v=$('#f').value.trim().toLowerCase(),L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1});
+ $('#list').innerHTML=L.length?L.map(function(p){var low=p.qty<=p.min,d=days(p);
+  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(p.price)+(p.exp?' · صلاحية '+p.exp:'')+'</span><br><span class="tag '+(p.qty<=0?'t-err':low?'t-warn':'t-ok')+'">'+fmt(p,p.qty)+'</span>'+(d!==null&&d<=90?' <span class="tag '+(d<0?'t-err':'t-warn')+'">'+(d<0?'منتهي':d+' يوم')+'</span>':'')+'</div><button class="btn sm own" onclick="fRestock('+p.id+')">توريد</button><button class="btn sec sm own" onclick="del('+p.id+')" aria-label="حذف">حذف</button></div>'}).join(''):'<div class="empty">'+(S.products.length?'مفيش نتايج.':'لسه مفيش أصناف. اضغط صنف جديد.')+'</div>'}
+function fProd(){var d=$('#dlg');
+ d.innerHTML='<form onsubmit="return addP(event)"><h2 style="margin-top:0">صنف جديد</h2><label>الاسم</label><input id="n" required><label>الباركود (اختياري)</label><input id="c">'
+ +'<div class="two"><div><label>سعر '+(ph()?'العلبة':'القطعة')+'</label><input id="p" type="number" step="0.01" min="0" required></div><div><label>الكمية الحالية'+(ph()?' (علب)':'')+'</label><input id="q2" type="number" min="0" value="0" required></div></div>'
+ +'<div class="two"><div><label>حد إعادة الطلب'+(ph()?' (علب)':'')+'</label><input id="m" type="number" min="0" value="3" required></div>'+(ph()?'<div><label>عدد الأشرطة في العلبة</label><input id="s" type="number" min="1" value="1" required></div>':'<div></div>')+'</div>'
+ +(ph()?'<label>تاريخ الصلاحية</label><input id="e" type="date">':'')
+ +'<div class="acts"><button class="btn" type="submit">حفظ الصنف</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';d.showModal()}
+async function addP(e){e.preventDefault();var s=ph()?Math.max(1,+$('#s').value||1):1;
+ var r=await DB.from('products').insert({shop_id:SID,name:$('#n').value.trim(),code:$('#c').value.trim()||null,price:+$('#p').value,qty:Math.round(+$('#q2').value*s),min_qty:Math.round(+$('#m').value*s),units_per_box:s,expiry:ph()&&$('#e').value?$('#e').value:null});
+ if(r.error){toast(msg(r.error));return false}
+ $('#dlg').close();toast('تمت إضافة الصنف');await load();render();return false}
+function fRestock(id){var p=P(id),d=$('#dlg');
+ d.innerHTML='<form onsubmit="return restock(event,'+id+')"><h2 style="margin-top:0">توريد: '+esc(p.name)+'</h2><label>الكمية المشتراة'+(p.spb>1?' (علب)':'')+'</label><input id="rq" type="number" min="1" required>'+(ph()?'<label>تاريخ صلاحية الدفعة الجديدة</label><input id="re" type="date" value="'+(p.exp||'')+'">':'')
+ +'<div class="acts"><button class="btn" type="submit">إضافة للمخزون</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';d.showModal()}
+async function restock(e,id){e.preventDefault();var p=P(id),u={qty:p.qty+Math.round(+$('#rq').value*(p.spb||1))};if(ph()&&$('#re').value)u.expiry=$('#re').value;
+ var r=await DB.from('products').update(u).eq('id',p.uid);
+ if(r.error){toast(msg(r.error));return false}
+ $('#dlg').close();toast('تمت إضافة الكمية');await load();render();return false}
+async function del(id){if(!confirm('حذف الصنف ده نهائياً؟'))return;var r=await DB.from('products').delete().eq('id',P(id).uid);if(r.error)toast(msg(r.error));else{await load();render()}}
+
+/* ---------- تنبيهات ---------- */
+function vAlerts(){var a=alerts();
+ $('#main').innerHTML='<h2 style="margin-top:0">محتاج انتباه</h2>'+(a.length?a.map(function(x){return '<div class="row"><div class="g"><b>'+esc(x.p.name)+'</b><span class="tag t-'+x.k+'">'+x.t+'</span></div><button class="btn sm own" onclick="fRestock('+x.p.id+')">توريد</button></div>'}).join(''):'<div class="empty">كله تمام. مفيش نواقص ولا صلاحيات قربت تخلص.</div>')}
+
+/* ---------- تقارير ---------- */
+function vRep(){var t0=new Date();t0.setHours(0,0,0,0);
+ var td=S.sales.filter(function(s){return s.t>=t0.getTime()}),sumSales=td.reduce(function(a,s){return a+s.tot-(s.refunded||0)},0);
+ var tdExp=S.expenses.filter(function(e){return new Date(e.created_at).getTime()>=t0.getTime()}),sumExp=tdExp.reduce(function(a,e){return a+ (+e.amount)},0);
+ var netIncome=sumSales-sumExp;
+ var top=S.products.filter(function(p){return p.sold>0}).sort(function(a,b){return b.sold-a.sold}).slice(0,5);
+ var st=S.products.filter(function(p){return p.qty>0&&Date.now()-(p.last||p.c)>30*864e5});
+ var val=S.products.reduce(function(a,p){return a+p.price*p.qty/(p.spb||1)},0);
+ $('#main').innerHTML='<div class="stat"><div><span class="mut">مبيعات اليوم</span><b>'+money(sumSales)+'</b>'+td.length+' فاتورة</div><div><span class="mut">مصروفات اليوم</span><b style="color:var(--err)">'+money(sumExp)+'</b>'+tdExp.length+' مصروف</div></div>'
+ +'<div class="stat" style="margin-top:10px"><div><span class="mut">صافي الحركة اليومية</span><b style="color:var(--ok)">'+money(netIncome)+'</b></div><div><span class="mut">قيمة المخزون</span><b>'+money(val)+'</b>بسعر البيع</div></div>'
+ +'<div class="acts"><button class="btn sec own" onclick="fExpense()">+ تسجيل مصروف</button></div>'
+ +'<h2>الأكثر مبيعاً</h2>'+(top.length?top.map(function(p){return '<div class="row"><b class="g">'+esc(p.name)+'</b><span class="mut">'+fmt(p,p.sold)+'</span></div>'}).join(''):'<div class="empty">لسه مفيش مبيعات.</div>')
+ +'<h2>راكد (من غير بيع 30 يوم)</h2>'+(st.length?st.map(function(p){return '<div class="row"><b class="g">'+esc(p.name)+'</b><span class="mut">'+fmt(p,p.qty)+'</span></div>'}).join(''):'<div class="empty">مفيش أصناف راكدة.</div>')}
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+boot();
+</script>
+</body>
+</html>
