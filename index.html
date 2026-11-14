@@ -102,7 +102,16 @@ function renderNav(){var n=alerts().length;
  $('#nav').innerHTML=T.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='alerts'&&n?'<i>'+n+'</i>':'')+'</button>'}).join('')}
 
 function go(t){tab=t;render()}
-function render(){applyRoleUI();renderNav();({sell:vSell,stock:vStock,alerts:vAlerts,rep:vRep,cust:vCust})[tab]();var si=subInfo();if(si.d<=3)$('#main').insertAdjacentHTML('afterbegin','<div class="sub '+(si.d<0?'t-err':'t-warn')+'خابر">'+(si.d<0?'الاشتراك منتهي. تقدر تشوف بياناتك بس مش تبيع أو تعدّل.':'الاشتراك ينتهي بعد '+Math.max(si.d,0)+' يوم.')+'</div>')}
+function render(){
+  applyRoleUI();
+  renderNav();
+  var fn = {sell:vSell, stock:vStock, alerts:vAlerts, rep:vRep, cust:vCust}[tab];
+  if(fn) fn();
+  var si=subInfo();
+  if(si.d<=3){
+    $('#main').insertAdjacentHTML('afterbegin','<div class="sub '+(si.d<0?'t-err':'t-warn')+'">'+(si.d<0?'الاشتراك منتهي. تقدر تشوف بياناتك بس مش تبيع أو تعدّل.':'الاشتراك ينتهي بعد '+Math.max(si.d,0)+' يوم.')+'</div>');
+  }
+}
 
 /* ---------- السحابة والتحقق الموحد ---------- */
 var DB=supabase.createClient('https://tfsghjsczwvqadjklkkh.supabase.co','sb_publishable_wuYZOw3xaPr5kSkEtVpWdQ_tVy0-077'),SID=null,ROLE='cashier',SHOP=null;
@@ -233,9 +242,10 @@ async function updateShopPin(){
 async function addCash(){var r=await DB.rpc('add_cashier',{p_shop:SID,p_email:$('#ce').value});toast(r.error?msg(r.error):'تمت إضافة الكاشير');if(!r.error)$('#dlg').close()}
 
 /* ---------- تصدير وكاميرا ---------- */
-function csv(k){var R=k?[['رقم','التاريخ','الإجمالي','الأصناف']].concat(S.sales.map(function(s){return[s.no,new Date(s.t).toLocaleString('ar-EG'),s.tot,s.items.map(function(i){return i.n+'×'+i.q}).join(' | ')}]]:[['الاسم','الباركود','السعر','الكمية (أصغر وحدة)','الحد الأدنى','وحدات/علبة','الصلاحية']].concat(S.products.map(function(p){return[p.name,p.code,p.price,p.qty,p.min,p.spb,p.exp]}));
+function csv(k){var R=k?[['رقم','التاريخ','الإجمالي','الأصناف']].concat(S.sales.map(function(s){return[s.no,new Date(s.t).toLocaleString('ar-EG'),s.tot,s.items.map(function(i){return i.n+'×'+i.q}).join(' | ')} S.sales)):[['الاسم','الباركود','السعر','الكمية (أصغر وحدة)','الحد الأدنى','وحدات/علبة','الصلاحية']].concat(S.products.map(function(p){return[p.name,p.code,p.price,p.qty,p.min,p.spb,p.exp]}));
  var txt='\ufeff'+R.map(function(r){return r.map(function(v){v=String(v);if(/^[=+\-@]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'}).join(',')}).join('\n');
  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));a.download=(k?'sales':'stock')+'.csv';a.click()}
+
 async function scan(){
     if (!('BarcodeDetector' in window)) {
         return toast('متصفحك الحالي لا يدعم الكاميرا المباشرة (BarcodeDetector). يفضل استخدام هاتف محمول أو جهاز باركود خارجي.');
@@ -312,7 +322,6 @@ async function doRet(sid, saleTime){
  var limit=(SHOP.cashier_refund_limit!==null&&SHOP.cashier_refund_limit!==undefined)?+SHOP.cashier_refund_limit:200;
  var isOld=(Date.now()-saleTime)>(24*60*60*1000);
 
- // التحقق المحلي في وضع قفل الجهاز أو للكاشير
  if(isEffectiveCashier() && (totalRefundVal > limit || isOld)){
   var correctPin=SHOP.owner_pin||'1234';
   if(!pin){
@@ -352,7 +361,7 @@ function fExpense(){
  d.showModal();
 }
 async function addExp(e){
- e.preventDefault();var title=$('#ex_title').value.trim(),amt=+$('#ex_amt').value;
+ e.preventDefault();var title=$('#ex_title'].value?.trim()||$('#ex_title').value.trim(),amt=+$('#ex_amt').value;
  var r=await DB.from('expenses').insert({shop_id:SID,title:title,amount:amt});
  if(r.error){toast(msg(r.error));return false}
  $('#dlg').close();toast('تم تسجيل المصروف بنجاح');await load();render();return false;
@@ -384,7 +393,7 @@ function sCart(){var el=$('#cart');if(!el)return;
  if(!cart.length){el.innerHTML='<div class="empty">الفاتورة فاضية. دوّر على صنف وضيفه.</div>';return}
  var tot=0;
  el.innerHTML=cart.map(function(c,i){var p=P(c.id);tot+=price(c);
-  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(price(c))+'</span>'+(p.spb>1?' <button class="btn sec sm" onclick="chU('+i+')">'+(c.u==='strip'?'شريط':'علبة')+'</button>':'')+'</div><button class="btn sec sm" aria-label="أقل" onclick="chQ('+i,+'-1)">−</button><b>'+c.q+'</b><button class="btn sec sm" aria-label="أكتر" onclick="chQ('+i,+1)">+</button></div>'}).join('')
+  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(price(c))+'</span>'+(p.spb>1?' <button class="btn sec sm" onclick="chU('+i+')">'+(c.u==='strip'?'شريط':'علبة')+'</button>':'')+'</div><button class="btn sec sm" aria-label="أقل" onclick="chQ('+i+',-1)">−</button><b>'+c.q+'</b><button class="btn sec sm" aria-label="أكتر" onclick="chQ('+i+',1)">+</button></div>'}).join('')
   +'<div class="tot"><span>الإجمالي</span><span>'+money(tot)+'</span></div>'+custBlock()+'<button class="btn full" onclick="doSell()">تأكيد البيع</button>'}
 
 async function doSell(){
