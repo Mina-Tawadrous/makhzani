@@ -242,7 +242,7 @@ async function updateShopPin(){
 async function addCash(){var r=await DB.rpc('add_cashier',{p_shop:SID,p_email:$('#ce').value});toast(r.error?msg(r.error):'تمت إضافة الكاشير');if(!r.error)$('#dlg').close()}
 
 /* ---------- تصدير وكاميرا ---------- */
-function csv(k){var R=k?[['رقم','التاريخ','الإجمالي','الأصناف']].concat(S.sales.map(function(s){return[s.no,new Date(s.t).toLocaleString('ar-EG'),s.tot,s.items.map(function(i){return i.n+'×'+i.q}).join(' | ')} S.sales)):[['الاسم','الباركود','السعر','الكمية (أصغر وحدة)','الحد الأدنى','وحدات/علبة','الصلاحية']].concat(S.products.map(function(p){return[p.name,p.code,p.price,p.qty,p.min,p.spb,p.exp]}));
+function csv(k){var R=k?[['رقم','التاريخ','الإجمالي','الأصناف']].concat(S.sales.map(function(s){return[s.no,new Date(s.t).toLocaleString('ar-EG'),s.tot,s.items.map(function(i){return i.n+'×'+i.q}).join(' | ')]})):[['الاسم','الباركود','السعر','الكمية (أصغر وحدة)','الحد الأدنى','وحدات/علبة','الصلاحية']].concat(S.products.map(function(p){return[p.name,p.code,p.price,p.qty,p.min,p.spb,p.exp]}));
  var txt='\ufeff'+R.map(function(r){return r.map(function(v){v=String(v);if(/^[=+\-@]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'}).join(',')}).join('\n');
  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'}));a.download=(k?'sales':'stock')+'.csv';a.click()}
 
@@ -361,7 +361,7 @@ function fExpense(){
  d.showModal();
 }
 async function addExp(e){
- e.preventDefault();var title=$('#ex_title'].value?.trim()||$('#ex_title').value.trim(),amt=+$('#ex_amt').value;
+ e.preventDefault();var title=$('#ex_title').value.trim(),amt=+$('#ex_amt').value;
  var r=await DB.from('expenses').insert({shop_id:SID,title:title,amount:amt});
  if(r.error){toast(msg(r.error));return false}
  $('#dlg').close();toast('تم تسجيل المصروف بنجاح');await load();render();return false;
