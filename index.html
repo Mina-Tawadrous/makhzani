@@ -43,18 +43,21 @@ nav i{position:absolute;top:6px;margin-inline-start:4px;background:var(--err);co
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,92vw);padding:18px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.acts{display:flex;gap:8px;margin-top:16px}.acts .btn{flex:1}
+.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.acts .btn{flex:1;min-width:110px}
 #toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:24px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw}
 #toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 #rc{border:1px dashed var(--line);border-radius:8px;padding:12px;margin:10px 0}#rc h2{margin:0 0 4px;text-align:center}#rc .ln{display:flex;justify-content:space-between;gap:8px;padding:3px 0}#rc .tt{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;font-weight:800}
 @media print{body>*:not(#dlg){display:none!important}#dlg{position:static;border:0;width:80mm;padding:0;color:#000;background:#fff}#dlg::backdrop{display:none}#dlg .noprint{display:none!important}#rc{border:0;color:#000}}
-body.cashier .own{display:none}.sub{padding:10px 12px;border-radius:8px;margin:0 0 10px}
+body.cashier .own{display:none!important}.sub{padding:10px 12px;border-radius:8px;margin:0 0 10px}
+.badge-cashier{background:var(--warnbg);color:var(--warn);padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;margin-inline-start:6px}
 </style>
 </head>
 <body>
-<header><h1>📦 مخزني</h1>
-<button class="btn sec sm" onclick="fSet()">⚙ الإعدادات</button></header>
+<header>
+  <h1>📦 مخزني <span id="modeBadge"></span></h1>
+  <button class="btn sec sm" onclick="fSet()">⚙ الإعدادات</button>
+</header>
 <main id="main"></main>
 <nav id="nav"></nav>
 <dialog id="dlg"></dialog>
@@ -63,6 +66,7 @@ body.cashier .own{display:none}.sub{padding:10px 12px;border-radius:8px;margin:0
 <script>
 var S=null,tab='sell',cart=[],authMode='login';
 var bluetoothDevice=null,printerCharacteristic=null;
+var isDeviceLocked=false;
 
 S={mode:'pharmacy',products:[],sales:[],shop:'',cust:[],expenses:[]};
 function save(){try{localStorage.setItem('mode',S.mode);localStorage.setItem('sname',S.shop||'')}catch(e){}}
@@ -70,10 +74,21 @@ function $(s){return document.querySelector(s)}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function ph(){return S.mode==='pharmacy'}
 function P(id){return S.products.find(function(p){return p.id===id})}
-function toast(m){var t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className=''},2200)}
+function toast(m){var t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.h);toast.h=setTimeout(function(){t.className=''},2600)}
 function fmt(p,q){return p.spb>1?Math.floor(q/p.spb)+' علبة'+(q%p.spb?' + '+(q%p.spb)+' شريط':''):q+' قطعة'}
 function money(n){return (Math.round(n*100)/100)+' ج.م'}
 function days(p){return p.exp?Math.ceil((new Date(p.exp)-Date.now())/864e5):null}
+
+function isEffectiveCashier(){
+ return ROLE !== 'owner' || isDeviceLocked;
+}
+
+function applyRoleUI(){
+ var c = isEffectiveCashier();
+ document.body.className = c ? 'cashier' : '';
+ $('#modeBadge').innerHTML = isDeviceLocked ? '<span class="badge-cashier">وضع الكاشير</span>' : '';
+}
+
 function alerts(){var a=[];S.products.forEach(function(p){
  var d=days(p);
  if(p.qty<=0)a.push({p:p,k:'err',t:'خلص من المخزون'});
@@ -81,11 +96,13 @@ function alerts(){var a=[];S.products.forEach(function(p){
  if(d!==null&&d<0)a.push({p:p,k:'err',t:'منتهي الصلاحية'});
  else if(d!==null&&d<=90)a.push({p:p,k:'warn',t:'ينتهي بعد '+d+' يوم'});
 });return a}
+
 function renderNav(){var n=alerts().length;
  var T=[['sell','بيع'],['stock','المخزون'],['alerts','تنبيهات'],['cust','العملاء'],['rep','تقارير']];
  $('#nav').innerHTML=T.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+(t[0]==='alerts'&&n?'<i>'+n+'</i>':'')+'</button>'}).join('')}
+
 function go(t){tab=t;render()}
-function render(){renderNav();({sell:vSell,stock:vStock,alerts:vAlerts,rep:vRep,cust:vCust})[tab]();var si=subInfo();if(si.d<=3)$('#main').insertAdjacentHTML('afterbegin','<div class="sub '+(si.d<0?'t-err':'t-warn')+'">'+(si.d<0?'الاشتراك منتهي. تقدر تشوف بياناتك بس مش تبيع أو تعدّل.':'الاشتراك ينتهي بعد '+Math.max(si.d,0)+' يوم.')+'</div>')}
+function render(){applyRoleUI();renderNav();({sell:vSell,stock:vStock,alerts:vAlerts,rep:vRep,cust:vCust})[tab]();var si=subInfo();if(si.d<=3)$('#main').insertAdjacentHTML('afterbegin','<div class="sub '+(si.d<0?'t-err':'t-warn')+'">'+(si.d<0?'الاشتراك منتهي. تقدر تشوف بياناتك بس مش تبيع أو تعدّل.':'الاشتراك ينتهي بعد '+Math.max(si.d,0)+' يوم.')+'</div>')}
 
 /* ---------- السحابة والتحقق الموحد ---------- */
 var DB=supabase.createClient('https://tfsghjsczwvqadjklkkh.supabase.co','sb_publishable_wuYZOw3xaPr5kSkEtVpWdQ_tVy0-077'),SID=null,ROLE='cashier',SHOP=null;
@@ -105,9 +122,10 @@ function subInfo(){if(!SHOP)return{e:'',d:99};var e=[SHOP.trial_ends,SHOP.paid_u
 
 function vNew(){$('#nav').innerHTML='';$('#main').innerHTML='<h2>اسم المحل أو الصيدلية</h2><input id="sn0" placeholder="مثلاً: صيدلية الشفاء"><label>نوع النشاط (بتختاره مرة واحدة ومش بيتغيّر بعد كده)</label><select id="ty"><option value="pharmacy">صيدلية</option><option value="general">محل عام</option></select><div class="acts"><button class="btn" onclick="mkShop()">إنشاء وبدء التجربة المجانية</button></div><h2>أنا كاشير</h2><p class="mut">لو صاحب المحل ضافك بإيميلك، اضغط تحديث.</p><div class="acts"><button class="btn sec" onclick="boot()">تحديث</button><button class="btn sec" onclick="DB.auth.signOut().then(function(){location.reload()})">تسجيل خروج</button></div>'}
 async function mkShop(){var n=$('#sn0').value.trim();if(!n)return toast('اكتب اسم المحل');var r=await DB.rpc('create_shop',{p_name:n,p_type:$('#ty').value});if(r.error)return toast(msg(r.error));boot()}
+
 /* الواجهة الموحدة الرئيسية */
 function vAuth(){
- $('#nav').innerHTML='';document.body.className='';
+ $('#nav').innerHTML='';document.body.className='';$('#modeBadge').innerHTML='';
  $('#main').innerHTML='<div style="max-width:440px;margin:20px auto;background:var(--card);padding:20px;border:1px solid var(--line);border-radius:12px;">'
   +'<div style="display:flex;gap:8px;margin-bottom:16px;">'
     +'<button class="btn '+(authMode==='login'?'':'sec')+'" style="flex:1" onclick="authMode=\'login\';vAuth()">تسجيل الدخول</button>'
@@ -145,12 +163,14 @@ async function submitAuth(){
 }
 
 async function boot(){var u=await DB.auth.getSession();if(!u.data.session)return vAuth();
- var m=await DB.from('members').select('shop_id,role,shops(name,type,trial_ends,paid_until)').limit(1);
+ var m=await DB.from('members').select('shop_id,role,shops(name,type,trial_ends,paid_until,owner_pin,cashier_refund_limit)').limit(1);
  if(m.error)return toast(msg(m.error));
  if(!m.data.length)return vNew();
  SID=m.data[0].shop_id;ROLE=m.data[0].role;SHOP=m.data[0].shops;
+ isDeviceLocked=(localStorage.getItem('cashier_lock_'+SID)==='1');
  try{S.mode=SHOP.type||'pharmacy';S.shop=localStorage.getItem('sname')||SHOP.name}catch(e){S.shop=SHOP.name}
- document.body.className=ROLE==='owner'?'':'cashier';await load();render();syncOfflineSales()}
+ await load();render();syncOfflineSales()}
+
 async function load(){
  var a=await DB.from('products').select('*').eq('shop_id',SID).order('created_at'),
      b=await DB.from('sales').select('id,number,total,paid,refunded,customer_id,created_at,sale_items(id,name,qty,unit,returned,line_total)').eq('shop_id',SID).order('created_at',{ascending:false}).limit(500),
@@ -160,11 +180,56 @@ async function load(){
  S.sales=b.data.reverse().map(function(r){return{id:r.id,no:r.number,t:Date.parse(r.created_at),tot:+r.total,paid:+r.paid,refunded:+r.refunded,cid:r.customer_id,items:r.sale_items.map(function(i){return{iid:i.id,n:i.name,q:i.qty,u:i.unit,rt:i.returned,v:+i.line_total}})}});
  S.expenses=e.data||[];
  var c=await DB.from('customers').select('*').eq('shop_id',SID).order('name');S.cust=c.data||[]}
+
+function lockCashierMode(){
+ localStorage.setItem('cashier_lock_'+SID,'1');
+ isDeviceLocked=true;
+ $('#dlg').close();
+ render();
+ toast('تم قفل الجهاز على وضع الكاشير 🔒');
+}
+
+function unlockCashierMode(){
+ var entered=prompt('أدخل كود المالك السري (PIN) للرجوع لصلاحيات المالك:');
+ if(entered===null)return;
+ var correctPin=SHOP.owner_pin||'1234';
+ if(entered.trim()===correctPin){
+  localStorage.removeItem('cashier_lock_'+SID);
+  isDeviceLocked=false;
+  $('#dlg').close();
+  render();
+  toast('تم فتح صلاحيات المالك بنجاح 🔓');
+ }else{
+  toast('كود الـ PIN غير صحيح');
+ }
+}
+
 function fSet(){var si=subInfo(),d=$('#dlg');
+ var isCash=isEffectiveCashier();
  d.innerHTML='<h2 style="margin-top:0">'+esc(SHOP.name)+'</h2><p class="mut">الاشتراك لحد '+si.e+' ('+(SHOP.paid_until?'مدفوع':'تجربة مجانية')+')</p>'
- +(ROLE==='owner'?'<label>إضافة كاشير (لازم يكون سجّل حساب بنفس الإيميل)</label><input id="ce" type="email"><div class="acts"><button class="btn" onclick="addCash()">إضافة</button></div>':'')
- +(ROLE==='owner'?'<div class="acts"><button class="btn sec" onclick="csv(0)">تصدير المخزون</button><button class="btn sec" onclick="csv(1)">تصدير المبيعات</button></div>':'')
- +'<div class="acts"><button class="btn sec" onclick="DB.auth.signOut().then(function(){location.reload()})">تسجيل خروج</button><button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button></div>';d.showModal()}
+ +(!isCash?'<div style="background:var(--bg);padding:12px;border-radius:8px;margin-bottom:12px;border:1px solid var(--line);">'
+   +'<b style="font-size:15px;">إعدادات الكاشير والأمان</b>'
+   +'<label>كود المالك السري (PIN - 4 أرقام)</label><input id="shop_pin" type="password" maxlength="4" value="'+esc(SHOP.owner_pin||'1234')+'">'
+   +'<label>سقف المرتجع الفوري للكاشير بدون PIN (ج.م)</label><input id="shop_limit" type="number" step="1" min="0" value="'+(SHOP.cashier_refund_limit!==null?SHOP.cashier_refund_limit:200)+'">'
+   +'<div class="acts" style="margin-top:10px;"><button class="btn sm" onclick="updateShopPin()">حفظ الإعدادات</button><button class="btn sec sm" onclick="lockCashierMode()">🔒 قفل كوضع كاشير</button></div>'
+  +'</div>':'')
+ +(isDeviceLocked?'<div style="background:var(--warnbg);padding:12px;border-radius:8px;margin-bottom:12px;"><p style="margin:0 0 8px;font-size:14px;color:var(--warn);">الجهاز مقفول حالياً على وضع الكاشير.</p><button class="btn sm" onclick="unlockCashierMode()">🔓 فتح وضع المالك (يتطلب PIN)</button></div>':'')
+ +(!isCash?'<label>إضافة كاشير بحساب مستقل (اختياري)</label><input id="ce" type="email" placeholder="email@example.com"><div class="acts"><button class="btn" onclick="addCash()">إضافة</button></div>':'')
+ +(!isCash?'<div class="acts"><button class="btn sec" onclick="csv(0)">تصدير المخزون</button><button class="btn sec" onclick="csv(1)">تصدير المبيعات</button></div>':'')
+ +'<div class="acts">'+(!isDeviceLocked?'<button class="btn sec" onclick="DB.auth.signOut().then(function(){location.reload()})">تسجيل خروج</button>':'')+'<button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button></div>';
+ d.showModal()}
+
+async function updateShopPin(){
+ var pin=$('#shop_pin').value.trim();
+ var limit=+$('#shop_limit').value;
+ if(pin.length<4)return toast('الكود السري يجب أن يكون 4 أرقام');
+ var r=await DB.from('shops').update({owner_pin:pin,cashier_refund_limit:limit}).eq('id',SID);
+ if(r.error)return toast(msg(r.error));
+ SHOP.owner_pin=pin;
+ SHOP.cashier_refund_limit=limit;
+ toast('تم حفظ إعدادات الأمان بنجاح ✅');
+}
+
 async function addCash(){var r=await DB.rpc('add_cashier',{p_shop:SID,p_email:$('#ce').value});toast(r.error?msg(r.error):'تمت إضافة الكاشير');if(!r.error)$('#dlg').close()}
 
 /* ---------- تصدير وكاميرا ---------- */
@@ -192,13 +257,59 @@ async function doPay(e,id){e.preventDefault();var r=await DB.rpc('record_payment
 function remind(id){var c=S.cust.find(function(x){return x.id===id}),n=(c.phone||'').replace(/\D/g,'');if(n.charAt(0)==='0')n='20'+n.slice(1);
  var tx='أهلاً '+c.name+'، المتبقي عليك '+money(c.balance)+' عند '+(S.shop||'المحل')+'. شكراً لتعاملك معنا.',w=null;try{w=window.open('https://wa.me/'+n+'?text='+encodeURIComponent(tx),'_blank')}catch(e){}
  if(!w){try{navigator.clipboard.writeText(tx);toast('تم نسخ نص التذكير')}catch(e){}}}
+
 function fRet(t){var s=saleOf(t),d=$('#dlg');
- d.innerHTML='<h2 style="margin-top:0">مرتجع من فاتورة '+s.no+'</h2>'+s.items.map(function(i){var m=i.q-i.rt;return '<div class="row"><div class="g"><b>'+esc(i.n)+'</b><span class="mut">اتباع '+i.q+(i.u==='strip'?' شريط':'')+' · اترجع '+i.rt+'</span></div><input type="number" min="0" max="'+m+'" value="0" data-i="'+i.iid+'" class="rq" style="width:70px"'+(m?'':' disabled')+'></div>'}).join('')+'<div class="acts"><button class="btn" onclick="doRet(\''+s.id+'\')">تأكيد المرتجع</button><button class="btn sec" onclick="$(\'#dlg\').close()">إلغاء</button></div>';d.showModal()}
-async function doRet(sid){var L=[].slice.call(document.querySelectorAll('.rq')).map(function(x){return{id:x.dataset.i,qty:+x.value||0}}).filter(function(l){return l.qty>0});
+ d.innerHTML='<h2 style="margin-top:0">مرتجع من فاتورة '+s.no+'</h2>'+s.items.map(function(i){var m=i.q-i.rt;return '<div class="row"><div class="g"><b>'+esc(i.n)+'</b><span class="mut">اتباع '+i.q+(i.u==='strip'?' شريط':'')+' · اترجع '+i.rt+'</span></div><input type="number" min="0" max="'+m+'" value="0" data-i="'+i.iid+'" data-v="'+i.v+'" data-q="'+i.q+'" class="rq" style="width:70px"'+(m?'':' disabled')+'></div>'}).join('')+'<div class="acts"><button class="btn" onclick="doRet(\''+s.id+'\','+s.t+')">تأكيد المرتجع</button><button class="btn sec" onclick="$(\'#dlg\').close()">إلغاء</button></div>';d.showModal()}
+
+async function doRet(sid, saleTime){
+ var inputs=[].slice.call(document.querySelectorAll('.rq'));
+ var L=[], totalRefundVal=0;
+ inputs.forEach(function(x){
+  var q=+x.value||0;
+  if(q>0){
+   L.push({id:x.dataset.i,qty:q});
+   totalRefundVal+=(+x.dataset.v/+x.dataset.q)*q;
+  }
+ });
  if(!L.length)return toast('حدد كمية المرتجع');
- var r=await DB.rpc('refund_sale',{p_shop:SID,p_sale:sid,p_lines:L});
- if(r.error)return toast(msg(r.error));
- $('#dlg').close();toast(r.data>0?'تم المرتجع. المطلوب رده كاش: '+money(r.data):'تم المرتجع وخُصم من ديون العميل');await load();render()}
+
+ var pin=window.enteredPin||null;
+ var limit=(SHOP.cashier_refund_limit!==null&&SHOP.cashier_refund_limit!==undefined)?+SHOP.cashier_refund_limit:200;
+ var isOld=(Date.now()-saleTime)>(24*60*60*1000);
+
+ // التحقق المحلي في وضع قفل الجهاز أو للكاشير
+ if(isEffectiveCashier() && (totalRefundVal > limit || isOld)){
+  var correctPin=SHOP.owner_pin||'1234';
+  if(!pin){
+   var pinInput=prompt('⚠️ المرتجع ('+money(totalRefundVal)+') يتجاوز الحد المسموح ('+money(limit)+') أو الفاتورة قديمة.\nأدخل كود المالك السري (PIN) لإتمام العملية:');
+   if(pinInput===null)return;
+   if(pinInput.trim()!==correctPin){
+    return toast('كود المالك غير صحيح! تم إلغاء المرتجع.');
+   }
+   pin=pinInput.trim();
+  }
+ }
+
+ var r=await DB.rpc('refund_sale',{p_shop:SID,p_sale:sid,p_lines:L,p_pin:pin});
+ if(r.error){
+  if(/يتطلب إدخال كود المالك/.test(r.error.message)){
+   var pinInput2=prompt('⚠️ يتطلب إدخال كود المالك السري (PIN):');
+   if(pinInput2!==null){
+    window.enteredPin=pinInput2.trim();
+    return doRet(sid,saleTime);
+   }
+  }else{
+   toast(msg(r.error));
+  }
+  window.enteredPin=null;
+  return;
+ }
+
+ window.enteredPin=null;
+ $('#dlg').close();
+ toast(r.data>0?'تم المرتجع. المطلوب رده كاش: '+money(r.data):'تم المرتجع وخُصم من ديون العميل');
+ await load();render();
+}
 
 function fExpense(){
  var d=$('#dlg');
@@ -214,10 +325,13 @@ async function addExp(e){
 
 /* ---------- بيع ووضع Offline-First ---------- */
 function vSell(){
- $('#main').innerHTML='<div style="display:flex;gap:8px"><input id="q" placeholder="ابحث بالاسم أو امسح الباركود" autocomplete="off">'+(window.BarcodeDetector?'<button class="btn sec" aria-label="مسح بالكاميرا" onclick="scan()">📷</button>':'')+'</div><div id="res" style="margin-top:8px"></div><h2>الفاتورة</h2><div id="cart"></div>';
+ var recent=S.sales.slice(-3).reverse();
+ $('#main').innerHTML='<div style="display:flex;gap:8px"><input id="q" placeholder="ابحث بالاسم أو امسح الباركود" autocomplete="off">'+(window.BarcodeDetector?'<button class="btn sec" aria-label="مسح بالكاميرا" onclick="scan()">📷</button>':'')+'</div><div id="res" style="margin-top:8px"></div><h2>الفاتورة</h2><div id="cart"></div>'
+ +(recent.length?'<h2>آخر الفواتير</h2>'+recent.map(function(s){return '<div class="row"><div class="g"><b>فاتورة #'+s.no+' — '+money(s.tot)+'</b><span class="mut">'+new Date(s.t).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})+(s.refunded?' · مرتجع '+money(s.refunded):'')+'</span></div><button class="btn sec sm" onclick="showReceipt('+s.t+')">عرض / مرتجع</button></div>'}).join(''):'');
  $('#q').oninput=sRes;
  $('#q').onkeydown=function(e){if(e.key==='Enter'){var v=this.value.trim(),p=S.products.find(function(x){return x.code&&x.code===v});if(p){addCart(p.id);this.value='';sRes()}}};
  sRes();sCart()}
+
 function sRes(){var v=$('#q').value.trim().toLowerCase(),r=$('#res');
  if(!v){r.innerHTML=S.products.length?'':'<div class="empty">المخزون فاضي. ضيف أصنافك من تبويب المخزون.</div>';return}
  var L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1||(p.code||'').indexOf(v)>-1}).slice(0,6);
@@ -257,7 +371,10 @@ async function doSell(){
 
  var r=await DB.rpc('make_sale',saleData);
  if(r.error){toast(msg(r.error));if(b)b.disabled=false;return}
- cart=[];CU='';PD='';await load();render();toast('تم إتمام البيع بنجاح ونشر البيانات بالسحابة');
+ cart=[];CU='';PD='';await load();render();
+ var lastSale=S.sales[S.sales.length-1];
+ toast('تم إتمام البيع بنجاح');
+ if(lastSale)showReceipt(lastSale.t);
 }
 
 async function syncOfflineSales(){
@@ -364,7 +481,7 @@ function wa(t){var s=saleOf(t),n=$('#ph').value.replace(/\D/g,'');
 
 /* ---------- المخزون ---------- */
 function vStock(){
- $('#main').innerHTML='<div class="acts" style="margin-top:0"><button class="btn own" onclick="fProd()">+ صنف جديد</button>'+''+'</div><input id="f" placeholder="فلترة بالاسم" style="margin-top:10px"><div id="list" style="margin-top:10px"></div>';
+ $('#main').innerHTML='<div class="acts" style="margin-top:0"><button class="btn own" onclick="fProd()">+ صنف جديد</button></div><input id="f" placeholder="فلترة بالاسم" style="margin-top:10px"><div id="list" style="margin-top:10px"></div>';
  $('#f').oninput=sList;sList()}
 function sList(){var v=$('#f').value.trim().toLowerCase(),L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1});
  $('#list').innerHTML=L.length?L.map(function(p){var low=p.qty<=p.min,d=days(p);
@@ -400,9 +517,9 @@ function vRep(){var t0=new Date();t0.setHours(0,0,0,0);
  var top=S.products.filter(function(p){return p.sold>0}).sort(function(a,b){return b.sold-a.sold}).slice(0,5);
  var st=S.products.filter(function(p){return p.qty>0&&Date.now()-(p.last||p.c)>30*864e5});
  var val=S.products.reduce(function(a,p){return a+p.price*p.qty/(p.spb||1)},0);
- $('#main').innerHTML='<div class="stat"><div><span class="mut">مبيعات اليوم</span><b>'+money(sumSales)+'</b>'+td.length+' فاتورة</div><div><span class="mut">مصروفات اليوم</span><b style="color:var(--err)">'+money(sumExp)+'</b>'+tdExp.length+' مصروف</div></div>'
- +'<div class="stat" style="margin-top:10px"><div><span class="mut">صافي الحركة اليومية</span><b style="color:var(--ok)">'+money(netIncome)+'</b></div><div><span class="mut">قيمة المخزون</span><b>'+money(val)+'</b>بسعر البيع</div></div>'
- +'<div class="acts"><button class="btn sec own" onclick="fExpense()">+ تسجيل مصروف</button></div>'
+ $('#main').innerHTML='<div class="stat"><div><span class="mut">مبيعات اليوم</span><b>'+money(sumSales)+'</b>'+td.length+' فاتورة</div><div class="own"><span class="mut">مصروفات اليوم</span><b style="color:var(--err)">'+money(sumExp)+'</b>'+tdExp.length+' مصروف</div></div>'
+ +'<div class="stat own" style="margin-top:10px"><div><span class="mut">صافي الحركة اليومية</span><b style="color:var(--ok)">'+money(netIncome)+'</b></div><div><span class="mut">قيمة المخزون</span><b>'+money(val)+'</b>بسعر البيع</div></div>'
+ +'<div class="acts own"><button class="btn sec" onclick="fExpense()">+ تسجيل مصروف</button></div>'
  +'<h2>الأكثر مبيعاً</h2>'+(top.length?top.map(function(p){return '<div class="row"><b class="g">'+esc(p.name)+'</b><span class="mut">'+fmt(p,p.sold)+'</span></div>'}).join(''):'<div class="empty">لسه مفيش مبيعات.</div>')
  +'<h2>راكد (من غير بيع 30 يوم)</h2>'+(st.length?st.map(function(p){return '<div class="row"><b class="g">'+esc(p.name)+'</b><span class="mut">'+fmt(p,p.qty)+'</span></div>'}).join(''):'<div class="empty">مفيش أصناف راكدة.</div>')}
 
