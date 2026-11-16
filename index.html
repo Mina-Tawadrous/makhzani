@@ -6,6 +6,7 @@
 <title>مخزني - إدارة المخزون</title>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2349d6">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 :root{--bg:#f2f5f9;--card:#fff;--ink:#14202c;--mut:#5a6b7c;--pri:#2349d6;--on:#fff;--line:#d9e0e8;--warn:#b93c0a;--warnbg:#fdeee6;--ok:#157a3c;--okbg:#e5f5ea;--err:#b91c1c;--errbg:#fde8e8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1720;--card:#18232f;--ink:#e8eef4;--mut:#93a4b5;--pri:#7c9bff;--on:#0f1720;--line:#2b3a4a;--warn:#ffa26b;--warnbg:#3a2417;--ok:#6fd194;--okbg:#14301f;--err:#ff8f8f;--errbg:#3a1a1a;color-scheme:dark}}
@@ -24,11 +25,11 @@ header select{width:auto}
 label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
 .btn{border:0;background:var(--pri);color:var(--on);padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer}
 .btn.sec{background:transparent;color:var(--pri);border:1px solid var(--pri)}
-.btn.sm{padding:5px 12px;font-size:14px}
+.btn.sm{padding:5px 10px;font-size:13px}
 .btn.full{width:100%;padding:13px;font-size:17px;margin-top:10px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
-.row .g{flex:1;min-width:0}
+.row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-bottom:6px;flex-wrap:wrap}
+.row .g{flex:1;min-width:160px}
 .row b{display:block;overflow-wrap:anywhere}
 .mut{color:var(--mut);font-size:14px}
 .tag{display:inline-block;padding:1px 9px;border-radius:20px;font-size:13px;font-weight:600}
@@ -43,12 +44,28 @@ nav i{position:absolute;top:6px;margin-inline-start:4px;background:var(--err);co
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);width:min(440px,92vw);padding:18px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.acts .btn{flex:1;min-width:110px}
+.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.acts .btn{flex:1;min-width:100px}
 #toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:24px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw}
 #toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 #rc{border:1px dashed var(--line);border-radius:8px;padding:12px;margin:10px 0}#rc h2{margin:0 0 4px;text-align:center}#rc .ln{display:flex;justify-content:space-between;gap:8px;padding:3px 0}#rc .tt{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;font-weight:800}
-@media print{body>*:not(#dlg){display:none!important}#dlg{position:static;border:0;width:80mm;padding:0;color:#000;background:#fff}#dlg::backdrop{display:none}#dlg .noprint{display:none!important}#rc{border:0;color:#000}}
+
+/* تنسيق استيكرات الباركود للطباعة */
+.bc-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+.bc-label{border:1px dashed #999;border-radius:4px;padding:6px 8px;text-align:center;background:#fff;color:#000;width:48mm;page-break-inside:avoid}
+.bc-label .b-shop{font-size:10px;font-weight:700;margin-bottom:1px}
+.bc-label .b-name{font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-label .b-price{font-size:12px;font-weight:800;margin-top:1px}
+.bc-label svg{max-width:100%;height:38px;display:block;margin:2px auto}
+
+@media print{
+  body>*:not(#dlg){display:none!important}
+  #dlg{position:static;border:0;width:100%;max-width:none;padding:0;color:#000;background:#fff;margin:0}
+  #dlg::backdrop{display:none}
+  #dlg .noprint{display:none!important}
+  #rc{border:0;color:#000;width:80mm;margin:0 auto}
+  .bc-label{border:1px solid #eee}
+}
 body.cashier .own{display:none!important}.sub{padding:10px 12px;border-radius:8px;margin:0 0 10px}
 .badge-cashier{background:var(--warnbg);color:var(--warn);padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;margin-inline-start:6px}
 </style>
@@ -523,19 +540,67 @@ function wa(t){var s=saleOf(t),n=$('#ph').value.replace(/\D/g,'');
  var w=null;try{w=window.open('https://wa.me/'+n+'?text='+encodeURIComponent(rcText(s)),'_blank')}catch(e){}
  if(!w){try{navigator.clipboard.writeText(rcText(s));toast('تم نسخ نص الفاتورة، الصقه في واتساب')}catch(e){toast('تعذر فتح واتساب')}}}
 
-/* ---------- المخزون ---------- */
+/* ---------- المخزون وتوليد وطباعة الباركود ---------- */
 function vStock(){
- $('#main').innerHTML='<div class="acts" style="margin-top:0"><button class="btn own" onclick="fProd()">+ صنف جديد</button></div><input id="f" placeholder="فلترة بالاسم" style="margin-top:10px"><div id="list" style="margin-top:10px"></div>';
+ $('#main').innerHTML='<div class="acts" style="margin-top:0"><button class="btn own" onclick="fProd()">+ صنف جديد</button></div><input id="f" placeholder="فلترة بالاسم أو الباركود" style="margin-top:10px"><div id="list" style="margin-top:10px"></div>';
  $('#f').oninput=sList;sList()}
-function sList(){var v=$('#f').value.trim().toLowerCase(),L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1});
+
+function sList(){var v=$('#f').value.trim().toLowerCase(),L=S.products.filter(function(p){return p.name.toLowerCase().indexOf(v)>-1||(p.code||'').toLowerCase().indexOf(v)>-1});
  $('#list').innerHTML=L.length?L.map(function(p){var low=p.qty<=p.min,d=days(p);
-  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(p.price)+(p.exp?' · صلاحية '+p.exp:'')+'</span><br><span class="tag '+(p.qty<=0?'t-err':low?'t-warn':'t-ok')+'">'+fmt(p,p.qty)+'</span>'+(d!==null&&d<=90?' <span class="tag '+(d<0?'t-err':'t-warn')+'">'+(d<0?'منتهي':d+' يوم')+'</span>':'')+'</div><button class="btn sm own" onclick="fRestock('+p.id+')">توريد</button><button class="btn sec sm own" onclick="del('+p.id+')" aria-label="حذف">حذف</button></div>'}).join(''):'<div class="empty">'+(S.products.length?'مفيش نتايج.':'لسه مفيش أصناف. اضغط صنف جديد.')+'</div>'}
+  return '<div class="row"><div class="g"><b>'+esc(p.name)+'</b><span class="mut">'+money(p.price)+(p.code?' · كود: '+esc(p.code):'')+(p.exp?' · صلاحية '+p.exp:'')+'</span><br><span class="tag '+(p.qty<=0?'t-err':low?'t-warn':'t-ok')+'">'+fmt(p,p.qty)+'</span>'+(d!==null&&d<=90?' <span class="tag '+(d<0?'t-err':'t-warn')+'">'+(d<0?'منتهي':d+' يوم')+'</span>':'')+'</div>'
+  +'<button class="btn sec sm own" onclick="fBarcode('+p.id+')" title="طباعة استيكر باركود">🏷️ باركود</button>'
+  +'<button class="btn sm own" onclick="fRestock('+p.id+')">توريد</button>'
+  +'<button class="btn sec sm own" onclick="del('+p.id+')" aria-label="حذف">حذف</button></div>'}).join(''):'<div class="empty">'+(S.products.length?'مفيش نتايج.':'لسه مفيش أصناف. اضغط صنف جديد.')+'</div>'}
+
+function genCode(){
+ var c=String(Math.floor(10000000+Math.random()*90000000));
+ $('#c').value=c;
+ toast('تم توليد كود باركود: '+c);
+}
+
 function fProd(){var d=$('#dlg');
- d.innerHTML='<form onsubmit="return addP(event)"><h2 style="margin-top:0">صنف جديد</h2><label>الاسم</label><input id="n" required><label>الباركود (اختياري)</label><input id="c">'
+ d.innerHTML='<form onsubmit="return addP(event)"><h2 style="margin-top:0">صنف جديد</h2><label>الاسم</label><input id="n" required>'
+ +'<label>الباركود (امسحه أو ولّده تلقائياً)</label><div style="display:flex;gap:8px"><input id="c" placeholder="رقم الباركود"><button type="button" class="btn sec sm" onclick="genCode()" style="white-space:nowrap">✨ توليد كود</button></div>'
  +'<div class="two"><div><label>سعر '+(ph()?'العلبة':'القطعة')+'</label><input id="p" type="number" step="0.01" min="0" required></div><div><label>الكمية الحالية'+(ph()?' (علب)':'')+'</label><input id="q2" type="number" min="0" value="0" required></div></div>'
  +'<div class="two"><div><label>حد إعادة الطلب'+(ph()?' (علب)':'')+'</label><input id="m" type="number" min="0" value="3" required></div>'+(ph()?'<div><label>عدد الأشرطة في العلبة</label><input id="s" type="number" min="1" value="1" required></div>':'<div></div>')+'</div>'
  +(ph()?'<label>تاريخ الصلاحية</label><input id="e" type="date">':'')
  +'<div class="acts"><button class="btn" type="submit">حفظ الصنف</button><button class="btn sec" type="button" onclick="$(\'#dlg\').close()">إلغاء</button></div></form>';d.showModal()}
+
+async function fBarcode(id){
+ var p=P(id);
+ if(!p.code){
+  if(!confirm('الصنف ده ملوش باركود مسجل. تحب نولد له كود تلقائي ونحفظه دلوقتي؟'))return;
+  var newCode=String(Math.floor(10000000+Math.random()*90000000));
+  var r=await DB.from('products').update({code:newCode}).eq('id',p.uid);
+  if(r.error)return toast(msg(r.error));
+  p.code=newCode;
+  sList();
+ }
+ var defCount=Math.max(1,Math.floor(p.qty/(p.spb||1))||1);
+ var d=$('#dlg');
+ d.innerHTML='<div class="noprint"><h2 style="margin-top:0">طباعة باركود: '+esc(p.name)+'</h2>'
+  +'<label>عدد الاستيكرات المطلوب طباعتها</label>'
+  +'<div style="display:flex;gap:8px"><input id="bc_cnt" type="number" min="1" max="200" value="'+defCount+'" oninput="drawLabels('+id+')"><button class="btn" onclick="window.print()">🖨️ طباعة الآن</button></div>'
+  +'<div class="acts" style="margin-top:10px"><button class="btn sec" onclick="$(\'#dlg\').close()">إغلاق</button></div></div>'
+  +'<div id="bc_area" class="bc-grid"></div>';
+ d.showModal();
+ drawLabels(id);
+}
+
+function drawLabels(id){
+ var p=P(id),cnt=Math.min(200,Math.max(1,+$('#bc_cnt').value||1));
+ var area=$('#bc_area'),html='';
+ for(var i=0;i<cnt;i++){
+  html+='<div class="bc-label"><div class="b-shop">'+esc(S.shop||'')+'</div><div class="b-name">'+esc(p.name)+'</div><svg class="bc-svg" jsbarcode-value="'+esc(p.code)+'"></svg><div class="b-price">'+money(p.price)+'</div></div>';
+ }
+ area.innerHTML=html;
+ if(window.JsBarcode){
+  try{
+   JsBarcode(".bc-svg",{format:"CODE128",width:1.6,height:32,displayValue:true,fontSize:11,margin:0});
+  }catch(e){toast('الكود غير صالح للرسم، جرب توليد كود أرقام فقط')}
+ }
+}
+
 async function addP(e){e.preventDefault();var s=ph()?Math.max(1,+$('#s').value||1):1;
  var r=await DB.from('products').insert({shop_id:SID,name:$('#n').value.trim(),code:$('#c').value.trim()||null,price:+$('#p').value,qty:Math.round(+$('#q2').value*s),min_qty:Math.round(+$('#m').value*s),units_per_box:s,expiry:ph()&&$('#e').value?$('#e').value:null});
  if(r.error){toast(msg(r.error));return false}
